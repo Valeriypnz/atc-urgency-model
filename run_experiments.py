@@ -7,7 +7,9 @@ python run_experiments.py --quick   — быстрый пробный расчё
 import json, statistics as st, math, time
 from dataclasses import replace
 import ovd_model as M, sector_model as S, sys, os
-cfg=M.Config(N=3, shift_min=420.0, warmup_min=60.0, base_per_hour={'A':81.0,'B':0.0,'C':0.0,'D':27*0.0001},  # D: 0,01 % на полёт пилотируемого ВС (27 ВС/ч)
+AC_MIN=1.2   # рабочее время диспетчера на один пролёт, мин (из норматива: 0,55·60/(26…31) ≈ 1,1–1,3)
+LOAD0=27*AC_MIN
+cfg=M.Config(N=3, shift_min=420.0, warmup_min=60.0, base_per_hour={'A':27*AC_MIN,'B':0.0,'C':0.0,'D':27*0.0001},  # A: 27 ВС/ч по AC_MIN мин; D: 0,01 % на полёт пилотируемого ВС
    
     per_flight={'A':0.0,'B':1.0,'C':4.0,'D':0.0001}, mean_service={'A':1.0,'B':1.0,'C':1.0,'D':15.0},
     target_wait={'A':0.5,'B':30.0,'C':0.5,'D':0.5}, weight={'A':1.0,'B':1.0,'C':1.0,'D':0.0}, cv=0.5)
@@ -27,12 +29,12 @@ def ser(c,x,reps,seed0,**kw):
 if __name__=='__main__':
     QUICK='--quick' in sys.argv; RM,RR=(30,20) if QUICK else (300,200)
     t=time.time(); out={'main':{},'th':{},'rob':{},'pool':{},'load':{}}
-    XS=[0,2,4,5,6,8,10,12,14,16]
-    for x in XS: out['load'][str(x)]=(81+5*x)/180
+    XS=[0,5,8,10,12,15,18,20,25,30]
+    for x in XS: out['load'][str(x)]=(LOAD0+5*x)/180
     for n,kw in V.items():
         for x in XS: out['main'][f'{n}|{x}']=ser(cfg,x,RM,10000*x+7,**kw)
         print(n,' '.join('%.3f'%out['main'][f'{n}|{x}']['K'] for x in XS),' R:',' '.join('%.2f'%out['main'][f'{n}|{x}']['R'] for x in XS),flush=True)
-    XM=10
+    XM=20
     for th in [0.25,0.5,1.0,1.5,2.0,3.0]:
         out['th'][str(th)]=ser(cfg,XM,RM,60000,rule='urg',reserve='float',th=th)
     print('th',{k:(round(v['K'],3),round(v['R'],3)) for k,v in out['th'].items()},flush=True)
@@ -40,10 +42,10 @@ if __name__=='__main__':
         c=replace(cfg,cv=cv)
         for p in ['S1','S3','S4']: out['rob'][f'cv{cv}|{p}']=ser(c,XM,RR,90000,**V[p])
     for N in [2,4]:
-        c=replace(cfg,N=N,base_per_hour={'A':81.0*N/3,'B':0,'C':0,'D':27*0.0001*N/3}); x=XM*N/3
+        c=replace(cfg,N=N,base_per_hour={'A':LOAD0*N/3,'B':0,'C':0,'D':27*0.0001*N/3}); x=XM*N/3
         for p in ['S1','S3','S4']: out['rob'][f'N{N}|{p}']=ser(c,x,RR,90000,**V[p])
     for pd in [0.01,0.1]:
-        c=replace(cfg,base_per_hour={'A':81.0,'B':0.0,'C':0.0,'D':27*pd},per_flight={'A':0.0,'B':1.0,'C':4.0,'D':pd},weight={'A':1.0,'B':1.0,'C':1.0,'D':3.0})
+        c=replace(cfg,base_per_hour={'A':LOAD0,'B':0.0,'C':0.0,'D':27*pd},per_flight={'A':0.0,'B':1.0,'C':4.0,'D':pd},weight={'A':1.0,'B':1.0,'C':1.0,'D':3.0})
         for p in ['S1','S3','S4']: out['rob'][f'pD{pd}|{p}']=ser(c,XM,RM,95000,**V[p])
     print('rob',{k:(round(v['K'],3),round(v['R'],3),round(v.get('D',-1),3)) for k,v in out['rob'].items()},flush=True)
     for pol in ['priority','dynamic','dyn_res']:

@@ -24,11 +24,11 @@ def ser(c,x,n,seed0,**kw):
     return o
 if __name__=='__main__':
   out={}
-  for x in [5,10]:
+  for x in [15,20]:
       for n,kw in V.items():
           out[f'{n}|{x}']=o=ser(cfg,x,300,10000*x+7,**kw)
           print(x,n,'K %.3f viol %.3f viol2 %.3f p95A %.2f p95C %.2f R %.3f max %.3f'%(o['K'],o['viol'],o['viol2'],o['p95A']*60,o['p95C']*60,o['R'],o['allmax']),flush=True)
-  c=replace(cfg,base_per_hour={'A':81.0,'B':0.0,'C':0.0,'D':27*0.01},per_flight={'A':0.0,'B':1.0,'C':4.0,'D':0.01},weight={'A':1.0,'B':1.0,'C':1.0,'D':3.0})
+  c=replace(cfg,base_per_hour={'A':E.LOAD0,'B':0.0,'C':0.0,'D':27*0.01},per_flight={'A':0.0,'B':1.0,'C':4.0,'D':0.01},weight={'A':1.0,'B':1.0,'C':1.0,'D':3.0})
   for n in ['S1','S3','S3r','S4']:
-      out[f'pD|{n}']=o=ser(c,10,300,95000,**V[n]); print('pD0.01',n,'K %.3f D %.3f'%(o['K'],o['D']))
+      out[f'pD|{n}']=o=ser(c,20,300,95000,**V[n]); print('pD0.01',n,'K %.3f D %.3f'%(o['K'],o['D']))
   json.dump(out,open('results/res_real.json','w'),ensure_ascii=False,indent=1)
